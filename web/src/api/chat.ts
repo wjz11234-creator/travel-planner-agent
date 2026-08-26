@@ -1,3 +1,5 @@
+/** 对接后端会话与 SSE：解析 event/data 块并回调到工作台。 */
+
 import type { ChatMessage, SessionSummary, TravelProfile } from "../types/itinerary";
 
 export type StreamHandlers = {
@@ -17,6 +19,13 @@ export type StreamHandlers = {
   onError?: (message: string) => void;
 };
 
+/**
+ * 按 SSE 规范切包；不完整的尾块留在 buf，避免 TCP 半包把 JSON 切坏。
+ * @param res fetch 响应（Response）
+ * @param handlers 事件回调（StreamHandlers）
+ * @returns Promise<void>
+ * @throws Error 当 body 不可读
+ */
 async function parseSse(
   res: Response,
   handlers: StreamHandlers,
@@ -77,6 +86,14 @@ async function parseSse(
   }
 }
 
+/**
+ * 发起一轮流式对话。
+ * @param message 用户输入（string）
+ * @param sessionId 已有会话 id，新对话传 null（string | null）
+ * @param handlers SSE 回调（StreamHandlers）
+ * @returns Promise<void>
+ * @throws Error HTTP 非 2xx 时
+ */
 export async function streamChat(
   message: string,
   sessionId: string | null,
@@ -94,6 +111,10 @@ export async function streamChat(
   await parseSse(res, handlers);
 }
 
+/**
+ * 拉取侧边栏会话。失败时返回空数组以免打断首屏。
+ * @returns Promise<SessionSummary[]>
+ */
 export async function fetchSessions(): Promise<SessionSummary[]> {
   const res = await fetch("/api/sessions");
   if (!res.ok) return [];
@@ -101,6 +122,11 @@ export async function fetchSessions(): Promise<SessionSummary[]> {
   return j.data ?? [];
 }
 
+/**
+ * 拉取某会话历史。
+ * @param sessionId 会话 id（string）
+ * @returns Promise<ChatMessage[]>
+ */
 export async function fetchHistory(sessionId: string): Promise<ChatMessage[]> {
   const q = new URLSearchParams({ session_id: sessionId });
   const res = await fetch(`/api/chat/history?${q.toString()}`);

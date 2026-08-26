@@ -1,3 +1,5 @@
+/** 与后端 Pydantic 对齐的行程/会话类型，前端只消费该协议。 */
+
 export type AgentId = "supervisor" | "guide" | "planner" | "preference" | "research" | "budget" | "critic" | "writer";
 
 export type TravelProfile = {

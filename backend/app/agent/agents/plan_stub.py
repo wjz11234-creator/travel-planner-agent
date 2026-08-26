@@ -1,3 +1,5 @@
+"""Planner 占位节点：P0 只确认规划意图，不产出 itinerary JSON。"""
+
 from __future__ import annotations
 
 from langchain_core.messages import HumanMessage
@@ -8,6 +10,12 @@ from app.llm import get_llm, llm_configured
 
 
 def plan_stub_node(state: TravelState) -> TravelState:
+    """规划/修订类请求的 P0 回复；itinerary 强制为 None 以免前端误渲染。
+
+    @param state: 含 intent/profile 的状态（TravelState）
+    @returns TravelState
+    @throws 已配置 LLM 时可能抛出厂商 API 异常
+    """
     profile = state.get("profile") or {}
     destination = profile.get("destination") or "（尚未识别）"
     intent = state.get("intent") or "plan"
@@ -37,3 +45,6 @@ def plan_stub_node(state: TravelState) -> TravelState:
         "final_reply": text,
         "itinerary": None,
     }
+
+
+# TODO(zwj 2026-08-26): P1 用 Preference→Research→Planner→Budget→Critic 替换本占位节点

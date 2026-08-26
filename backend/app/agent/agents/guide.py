@@ -1,3 +1,5 @@
+"""GuideAgent：检索本地攻略后作答，禁止编造未收录的营业时间与完整日历。"""
+
 from __future__ import annotations
 
 from langchain_core.messages import HumanMessage
@@ -27,6 +29,12 @@ def _guide_prompt(state: TravelState, context: str) -> str:
 
 
 def guide_node(state: TravelState) -> TravelState:
+    """非流式问答节点，供 graph.invoke 使用。
+
+    @param state: 含 task/history 的状态（TravelState）
+    @returns TravelState 写入 final_reply 与 retrieved_docs
+    @throws 上游 LLM 异常原样抛出，由 API 层转成 502
+    """
     chunks = retrieve_guides(state.get("task") or "")
     context = format_context(chunks)
     msg = get_llm(temperature=0.3).invoke(
@@ -42,6 +50,14 @@ def guide_node(state: TravelState) -> TravelState:
 
 
 def guide_stream(state: TravelState):
+    """流式问答：先 yield token 字符串，最后 yield 完整状态 dict。
+
+    最后一项用 dict 区分文本增量，是为了让 SSE 层先推字再落库终稿。
+
+    @param state: TravelState
+    @returns Iterator[str | dict] token 或终态补丁
+    @throws LLM 流式调用失败时抛出
+    """
     chunks = retrieve_guides(state.get("task") or "")
     context = format_context(chunks)
     prompt = _guide_prompt(state, context)

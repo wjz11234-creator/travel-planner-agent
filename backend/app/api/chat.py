@@ -1,3 +1,5 @@
+"""对话 HTTP 层：同步 invoke 与 SSE 流式，把图节点事件推给前端。"""
+
 from __future__ import annotations
 
 import json
@@ -19,6 +21,8 @@ router = APIRouter()
 
 
 class ChatRequest(BaseModel):
+    """聊天请求体。"""
+
     message: str = Field(min_length=1)
     session_id: Optional[str] = None
 
@@ -59,6 +63,10 @@ def _initial_state(message: str, history: list[dict]) -> dict:
 
 @router.get("/health")
 def health():
+    """探活与编排后端探测，前端/运维用来确认 Key 与 LangGraph 是否就绪。
+
+    @returns dict ok/llm_configured/phase/graph
+    """
     return {
         "ok": True,
         "llm_configured": llm_configured(),
@@ -69,16 +77,32 @@ def health():
 
 @router.get("/sessions")
 def sessions(limit: int = Query(40, ge=1, le=100)):
+    """侧边栏会话列表。
+
+    @param limit: 最多条数（int），Query 约束 1–100
+    @returns dict data 为 Session 摘要列表
+    """
     return {"data": session_store.list_sessions(limit=limit)}
 
 
 @router.get("/chat/history")
 def history(session_id: str = Query(..., min_length=1)):
+    """回放指定会话，切换侧边栏时调用。
+
+    @param session_id: 会话 id（str）
+    @returns dict data 为消息列表
+    """
     return {"data": session_store.list_history(session_id)}
 
 
 @router.post("/chat")
 def chat(body: ChatRequest):
+    """一次性返回终稿，便于脚本验收。
+
+    @param body: ChatRequest
+    @returns dict session_id/intent/agent/reply/profile/reason
+    @throws HTTPException 400 未配置 Key；502 模型调用失败
+    """
     if not llm_configured():
         raise HTTPException(status_code=400, detail="未配置 LLM API Key，请编辑 backend/.env")
     sid = session_store.ensure_session(body.session_id)
@@ -103,6 +127,14 @@ def chat(body: ChatRequest):
 
 @router.post("/chat/stream")
 def chat_stream(body: ChatRequest):
+    """SSE：先推 agent/intent 再推 text，让 UI 显示谁在干活。
+
+    流式路径不走 graph.stream，是因为 Guide 的 token 需要在节点内部 yield。
+
+    @param body: ChatRequest
+    @returns StreamingResponse text/event-stream
+    @throws HTTPException 400 未配置 Key；生成器内错误以 event:error 下发
+    """
     if not llm_configured():
         raise HTTPException(status_code=400, detail="未配置 LLM API Key，请编辑 backend/.env")
 
@@ -167,6 +199,7 @@ def chat_stream(body: ChatRequest):
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
+            # 防止反向代理把 SSE 攒成一块再下发，前端会看不到 Agent 切换
             "X-Accel-Buffering": "no",
         },
     )

@@ -1,3 +1,5 @@
+"""Supervisor：规则+LLM 判定 qa/plan/revise，只写 intent 与 profile，不生成攻略正文。"""
+
 from __future__ import annotations
 
 import json
@@ -38,7 +40,13 @@ def _history_text(history: list | None, limit: int = 8) -> str:
 
 
 def rule_intent(task: str) -> str:
+    """关键词初判意图，供 LLM 失败或未配置时兜底。
+
+    @param task: 当前用户输入（str）
+    @returns str qa | plan | revise
+    """
     t = task or ""
+    # 同时要求「改」类词和天数指代，避免「不要带伞」被误判为改行程
     if any(k in t for k in REVISE_HINTS) and any(k in t for k in ("第", "天", "改")):
         return "revise"
     if any(k in t for k in PLAN_HINTS):
@@ -47,6 +55,11 @@ def rule_intent(task: str) -> str:
 
 
 def extract_city(task: str) -> str | None:
+    """从原文抽出已知城市名，补 LLM 漏填 destination。
+
+    @param task: 当前用户输入（str）
+    @returns str | None 命中的中文城市名
+    """
     for city in CITY_HINTS:
         if city in (task or ""):
             return city
@@ -55,6 +68,7 @@ def extract_city(task: str) -> str | None:
 
 def _parse_decision(text: str) -> SupervisorDecision | None:
     raw = (text or "").strip()
+    # 模型常把 JSON 包在 ```json 围栏里，直接 json.loads 会失败
     if raw.startswith("```"):
         raw = re.sub(r"^```(?:json)?", "", raw)
         raw = re.sub(r"```$", "", raw).strip()
@@ -72,6 +86,11 @@ def _parse_decision(text: str) -> SupervisorDecision | None:
 
 
 def supervisor_node(state: TravelState) -> TravelState:
+    """图节点：写入 intent、destination，current_agent 标为 supervisor。
+
+    @param state: 当前协作状态（TravelState）
+    @returns TravelState 合并后的新状态
+    """
     task = state.get("task") or ""
     hinted = rule_intent(task)
     city = extract_city(task)
@@ -90,6 +109,7 @@ def supervisor_node(state: TravelState) -> TravelState:
                 if not decision.destination:
                     decision.destination = city
         except Exception:
+            # 路由失败时保留规则结果，避免整轮对话 500
             pass
 
     profile = TravelProfile.model_validate(state.get("profile") or empty_profile())

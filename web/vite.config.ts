@@ -1,3 +1,5 @@
+/** Vite 开发配置：把 /api 代理到 FastAPI，避免浏览器跨域。 */
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 

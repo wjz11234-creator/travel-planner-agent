@@ -1,3 +1,5 @@
+"""SQLite 会话仓储：多轮 history 与侧边栏会话列表。"""
+
 from __future__ import annotations
 
 import sqlite3
@@ -15,6 +17,10 @@ def _connect() -> sqlite3.Connection:
 
 
 def init_db() -> None:
+    """幂等建表，可在启动与写入前重复调用。
+
+    @returns None
+    """
     with _connect() as conn:
         conn.executescript(
             """
@@ -41,6 +47,11 @@ def _now() -> str:
 
 
 def ensure_session(session_id: str | None) -> str:
+    """没有 session_id 则新建，有则刷新 updated_at。
+
+    @param session_id: 客户端带来的会话 id（str | None）
+    @returns str 实际使用的 session_id
+    """
     init_db()
     sid = (session_id or "").strip() or str(uuid.uuid4())
     now = _now()
@@ -62,6 +73,14 @@ def ensure_session(session_id: str | None) -> str:
 
 
 def add_message(session_id: str, role: str, content: str, agent: str | None = None) -> None:
+    """追加一条消息并更新会话时间，供侧边栏按最近对话排序。
+
+    @param session_id: 会话 id（str）
+    @param role: user | agent（str）
+    @param content: 正文（str）
+    @param agent: 产出该条的专家名（str | None），用户消息为 None
+    @returns None
+    """
     now = _now()
     with _connect() as conn:
         conn.execute(
@@ -75,6 +94,11 @@ def add_message(session_id: str, role: str, content: str, agent: str | None = No
 
 
 def list_history(session_id: str) -> list[dict]:
+    """按写入顺序取出一轮会话，供多轮指代消解。
+
+    @param session_id: 会话 id（str）
+    @returns list[dict] 含 role/content/agent/created_at
+    """
     init_db()
     with _connect() as conn:
         rows = conn.execute(
@@ -85,6 +109,11 @@ def list_history(session_id: str) -> list[dict]:
 
 
 def list_sessions(limit: int = 40) -> list[dict]:
+    """会话列表：条数与最后一条预览供侧边栏展示。
+
+    @param limit: 最多返回条数（int）
+    @returns list[dict] session_id/updated_at/msg_count/preview
+    """
     init_db()
     with _connect() as conn:
         rows = conn.execute(

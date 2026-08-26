@@ -1,3 +1,5 @@
+/** 工作台首页：会话列表、Agent 徽章与流式气泡。 */
+
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { fetchHistory, fetchSessions, streamChat } from "./api/chat";
 import type { ChatMessage, SessionSummary, TravelProfile } from "./types/itinerary";
@@ -16,11 +18,20 @@ const AGENT_LABEL: Record<string, string> = {
   writer: "Writer",
 };
 
+/**
+ * 把后端 agent id 转成徽章文案。
+ * @param id 专家 id（string | null | undefined）
+ * @returns 展示名（string），未知 id 原样返回
+ */
 function agentLabel(id?: string | null): string {
   if (!id) return "";
   return AGENT_LABEL[id] ?? id;
 }
 
+/**
+ * P0 旅行对话工作台。
+ * @returns 页面 JSX
+ */
 export default function App() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(() =>
@@ -79,6 +90,7 @@ export default function App() {
           setMessages((prev) => {
             const next = [...prev];
             const last = next[next.length - 1];
+            // 同一专家的增量写回最后一条，避免每个 token 生成新气泡
             if (last?.role === "agent" && last.agent === agent) {
               next[next.length - 1] = { ...last, content: acc };
             } else {
