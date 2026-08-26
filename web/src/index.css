@@ -1,0 +1,29 @@
+:root {
+  --bg: #f4efe6;
+  --ink: #1c1917;
+  --muted: #78716c;
+  --paper: #fffaf3;
+  --line: #e7e0d4;
+  --teal: #0f766e;
+  --indigo: #4338ca;
+  --amber: #b45309;
+  font-family: "Iowan Old Style", "Songti SC", "Source Han Serif SC", Georgia, serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+button,
+textarea {
+  font: inherit;
+}
