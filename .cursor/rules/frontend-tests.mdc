@@ -1,0 +1,11 @@
+---
+description: 本仓库单测与 e2e 路径、P0 覆盖
+globs: web/**/*.{test,spec}.{ts,tsx}
+alwaysApply: false
+---
+
+# 本仓库测试
+
+- 单测：`web/src/**/*.test.ts(x)`。e2e：`web/e2e/*.spec.ts`。
+- e2e mock：`/api/sessions`、`/api/chat/history`、`/api/chat/stream`。
+- 覆盖：空态三示例、Guide 流式、Planner 占位、新对话。命令见 `AGENTS.md`。

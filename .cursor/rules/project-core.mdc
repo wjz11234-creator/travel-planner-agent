@@ -1,0 +1,12 @@
+---
+description: 本仓库产品边界与目录（覆盖通用交付环）
+alwaysApply: true
+---
+
+# Travel Planner 覆盖
+
+- 攻略问答 + 多日方案；不做订票。协作协议在 `docs/DESIGN.md`。
+- 前端只在 `web/`，`/api` → `:8000`。不要新增第二个前端入口。
+- 改 TravelState / SSE 事件先改 `DESIGN.md` 和 `web/src/types/itinerary.ts`。
+- P0 不要做按天行程卡片。
+- 测试与验收用例见 `AGENTS.md`。不要提交 `.env`。

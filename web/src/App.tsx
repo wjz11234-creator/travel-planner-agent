@@ -2,31 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { fetchHistory, fetchSessions, streamChat } from "./api/chat";
+import { agentLabel } from "./lib/agents";
 import type { ChatMessage, SessionSummary, TravelProfile } from "./types/itinerary";
 import styles from "./App.module.css";
 
 const SESSION_KEY = "travel-planner-session-id";
-
-const AGENT_LABEL: Record<string, string> = {
-  supervisor: "Supervisor",
-  guide: "Guide",
-  planner: "Planner",
-  preference: "Preference",
-  research: "Research",
-  budget: "Budget",
-  critic: "Critic",
-  writer: "Writer",
-};
-
-/**
- * 把后端 agent id 转成徽章文案。
- * @param id 专家 id（string | null | undefined）
- * @returns 展示名（string），未知 id 原样返回
- */
-function agentLabel(id?: string | null): string {
-  if (!id) return "";
-  return AGENT_LABEL[id] ?? id;
-}
 
 /**
  * P0 旅行对话工作台。
@@ -64,7 +44,8 @@ export default function App() {
   }, [sessionId]);
 
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages, loading]);
 
   const send = async () => {
@@ -75,7 +56,6 @@ export default function App() {
     setLoading(true);
     setActiveAgent("supervisor");
     setMessages((prev) => [...prev, { role: "user", content: text }]);
-    let acc = "";
     try {
       await streamChat(text, sessionId, {
         onAgent: (agent) => {
@@ -86,15 +66,13 @@ export default function App() {
           if (p.profile) setProfile(p.profile);
         },
         onText: (delta, agent) => {
-          acc += delta;
           setMessages((prev) => {
             const next = [...prev];
             const last = next[next.length - 1];
-            // 同一专家的增量写回最后一条，避免每个 token 生成新气泡
             if (last?.role === "agent" && last.agent === agent) {
-              next[next.length - 1] = { ...last, content: acc };
+              next[next.length - 1] = { ...last, content: last.content + delta };
             } else {
-              next.push({ role: "agent", content: acc, agent });
+              next.push({ role: "agent", content: delta, agent });
             }
             return next;
           });
@@ -133,22 +111,28 @@ export default function App() {
   };
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} data-testid="workbench">
       <aside className={styles.sidebar}>
         <div className={styles.brand}>
           <strong>Travel Planner</strong>
           <span>P0 · 多 Agent 骨架</span>
         </div>
-        <button className={styles.newBtn} type="button" onClick={newChat}>
+        <button
+          className={styles.newBtn}
+          type="button"
+          onClick={newChat}
+          data-testid="new-chat"
+        >
           新对话
         </button>
-        <ul className={styles.sessionList}>
+        <ul className={styles.sessionList} data-testid="session-list">
           {sessions.map((s) => (
             <li key={s.session_id}>
               <button
                 type="button"
                 className={s.session_id === sessionId ? styles.active : ""}
                 onClick={() => setSessionId(s.session_id)}
+                data-testid={`session-${s.session_id}`}
               >
                 <em>{s.preview || "空会话"}</em>
                 <small>{s.msg_count} 条</small>
@@ -167,31 +151,43 @@ export default function App() {
             </p>
           </div>
           <div className={styles.meta}>
-            <span className={styles.pill}>
+            <span className={styles.pill} data-testid="intent-pill">
               意图 {intent ?? "—"}
             </span>
-            <span className={styles.pill}>
+            <span className={styles.pill} data-testid="destination-pill">
               目的地 {profile.destination ?? "未识别"}
             </span>
             {activeAgent ? (
-              <span className={styles.live}>
+              <span className={styles.live} data-testid="active-agent">
                 {agentLabel(activeAgent)} 工作中
               </span>
             ) : null}
           </div>
         </header>
 
-        <div className={styles.list} ref={listRef}>
+        <div className={styles.list} ref={listRef} data-testid="message-list">
           {messages.length === 0 ? (
-            <div className={styles.empty}>
+            <div className={styles.empty} data-testid="empty-state">
               <p>试着问：</p>
-              <button type="button" onClick={() => setInput("京都四月穿什么")}>
+              <button
+                type="button"
+                onClick={() => setInput("京都四月穿什么")}
+                data-testid="example-kyoto"
+              >
                 京都四月穿什么
               </button>
-              <button type="button" onClick={() => setInput("东京塔几点关门")}>
+              <button
+                type="button"
+                onClick={() => setInput("东京塔几点关门")}
+                data-testid="example-tokyo-tower"
+              >
                 东京塔几点关门
               </button>
-              <button type="button" onClick={() => setInput("帮我做东京 5 日")}>
+              <button
+                type="button"
+                onClick={() => setInput("帮我做东京 5 日")}
+                data-testid="example-tokyo-5d"
+              >
                 帮我做东京 5 日
               </button>
             </div>
@@ -200,23 +196,39 @@ export default function App() {
             <article
               key={`${m.role}-${i}`}
               className={m.role === "user" ? styles.user : styles.agent}
+              data-testid={`chat-message-${i}`}
+              data-role={m.role}
             >
               {m.role === "agent" ? (
-                <span className={styles.badge} data-agent={m.agent ?? ""}>
+                <span
+                  className={styles.badge}
+                  data-agent={m.agent ?? ""}
+                  data-testid={`agent-badge-${m.agent ?? "unknown"}`}
+                >
                   {agentLabel(m.agent)}
                 </span>
               ) : (
-                <span className={styles.badgeUser}>你</span>
+                <span className={styles.badgeUser} data-testid="user-badge">
+                  你
+                </span>
               )}
-              <div className={styles.bubble}>{m.content}</div>
+              <div className={styles.bubble} data-testid="chat-bubble">
+                {m.content}
+              </div>
             </article>
           ))}
           {loading && !messages.some((m) => m.role === "agent" && m.content) && activeAgent === "supervisor" ? (
-            <p className={styles.hint}>Supervisor 正在判断意图…</p>
+            <p className={styles.hint} data-testid="supervisor-hint">
+              Supervisor 正在判断意图…
+            </p>
           ) : null}
         </div>
 
-        {error ? <p className={styles.error}>{error}</p> : null}
+        {error ? (
+          <p className={styles.error} data-testid="error-banner">
+            {error}
+          </p>
+        ) : null}
 
         <footer className={styles.composer}>
           <textarea
@@ -226,8 +238,14 @@ export default function App() {
             placeholder="问攻略，或让我规划行程…"
             rows={2}
             disabled={loading}
+            data-testid="composer-input"
           />
-          <button type="button" onClick={() => void send()} disabled={loading || !input.trim()}>
+          <button
+            type="button"
+            onClick={() => void send()}
+            disabled={loading || !input.trim()}
+            data-testid="send-button"
+          >
             {loading ? "协作中" : "发送"}
           </button>
         </footer>

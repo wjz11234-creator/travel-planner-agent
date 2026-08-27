@@ -1,0 +1,11 @@
+---
+description: 本仓库 SSE 事件与半包解析
+globs: web/src/api/**/*.{ts,tsx},web/src/App.tsx
+alwaysApply: false
+---
+
+# 本仓库 SSE
+
+- 顺序：`agent` → `intent` → `text`* → `done`；出错 `error`。解析只放 `web/src/api/sse.ts`。
+- 半包用 `\n\n` 切块，尾段留 buffer。字段与后端 `_sse` 对齐，禁止发明。
+- 新事件：后端 yield、`sse.ts`、`App.tsx`、`sse.test.ts` 一起改。

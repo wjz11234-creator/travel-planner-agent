@@ -39,6 +39,19 @@ npm run dev
 
 浏览器打开 http://127.0.0.1:5173 。开发时 Vite 会把 `/api` 代理到 `8000`。
 
+前端 Agent 走**通用**个人 Skills（`frontend-ai-native` / `frontend-slice` / `frontend-test` / `ui-verify`）。本仓库只覆盖产品差异，见 [AGENTS.md](AGENTS.md)。
+
+## 前端测试
+
+在 `web/` 下：
+
+```bash
+npm test           # Vitest 单测（mock SSE，不打真实 LLM）
+npm run test:e2e   # Playwright e2e（拦截 /api，会起或复用 :5173）
+```
+
+首次 e2e：本仓库钉了 Playwright 1.49（兼容 macOS 12）。配置使用本机 Google Chrome（`channel: "chrome"`）。更高系统可再执行 `npx playwright install chromium` 并去掉 channel。
+
 ## P0 怎么验收
 
 - 「京都四月穿什么」→ Supervisor 判 `qa` → Guide 引用本地攻略

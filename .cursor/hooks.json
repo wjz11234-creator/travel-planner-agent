@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": ".cursor/hooks/frontend-tsc.js",
+        "timeout": 60
+      }
+    ],
+    "stop": [
+      {
+        "type": "prompt",
+        "prompt": "This repo uses personal skill frontend-ai-native nine gates. Do not skip human confirmation or start the next gate. If this session only did gates 1–4, do not run tests or real APIs. If the user already confirmed gate 5+ and frontend source was edited, follow frontend-test: read this repo AGENTS.md test commands (not another project), run unit tests (mock, no real LLM). If UI changed and the user confirmed gate 6 or 7, run e2e or ui-verify; gate 6–7 fix loops max 3 then write output issues docs. If tests were required, skipped, or failing, continue and fix. If already passed or tests were not in scope, stop.",
+        "loop_limit": 1
+      }
+    ]
+  }
+}

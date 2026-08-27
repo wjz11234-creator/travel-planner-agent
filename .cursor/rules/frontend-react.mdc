@@ -1,0 +1,13 @@
+---
+description: 本仓库工作台：CSS Module、会话、流式气泡
+globs: web/src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# 本仓库 React
+
+- 样式用同名 `*.module.css`。可断言节点用稳定 `data-testid`。
+- 同一 `agent` 的 SSE text 写回最后一条气泡，不要每个 token 新建。
+- 会话 id：`travel-planner-session-id`；「新对话」清 session 与消息。
+- 徽章文案只用 `web/src/lib/agents.ts` 的 `agentLabel`。
+- 业务 fetch 只走 `web/src/api/chat.ts`。
