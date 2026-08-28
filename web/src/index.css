@@ -1,13 +1,15 @@
+@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap");
+
 :root {
-  --bg: #f4efe6;
-  --ink: #1c1917;
-  --muted: #78716c;
-  --paper: #fffaf3;
-  --line: #e7e0d4;
-  --teal: #0f766e;
-  --indigo: #4338ca;
+  --bg: #f7f4ef;
+  --ink: #2e2c28;
+  --muted: #7c7872;
+  --paper: #fcfaf7;
+  --line: #ede8df;
+  --teal: #6e8071;
+  --indigo: #6e8071;
   --amber: #b45309;
-  font-family: "Iowan Old Style", "Songti SC", "Source Han Serif SC", Georgia, serif;
+  font-family: "Figtree", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
   color: var(--ink);
   background: var(--bg);
 }

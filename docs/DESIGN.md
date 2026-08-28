@@ -65,6 +65,22 @@ flowchart TB
 
 行程 JSON：`days[].date/theme/area`，`items[]`（time/place/category/duration_min/tips/est_cost），`warnings[]`
 
+## 鉴权与会话归属
+
+Cookie `tp_auth`（httpOnly、SameSite=Lax）。`User`：`id`、`email`（登录标识，邮箱或手机号）、`nickname`。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/auth/me` | `{ user }` 或 `{ user: null }` |
+| POST | `/api/auth/register` | `{ nickname, email, password }` |
+| POST | `/api/auth/login` | `{ email, password }` |
+| POST | `/api/auth/logout` | 清 Cookie |
+| POST | `/api/auth/forgot` | `{ email }`，占位，不发短信/邮件 |
+
+游客：`POST /api/chat/stream` 可带 `history`，不写 SQLite。已登录：`sessions.user_id` 绑定；`GET /api/sessions` 仅本人。SSE 事件不变。
+
+前端路由（同一 `web/` 入口）：`/login` `/register` `/forgot` 鉴权页，`/` 工作台。未登录访问 `/` 跳转登录；游客用跳转 state，刷新不保留。
+
 ## 分期
 
 ### P0 — 多 Agent 骨架（本期）

@@ -17,7 +17,7 @@ def _connect() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    """幂等建表，可在启动与写入前重复调用。
+    """幂等建表，并为已有库补 user_id 列。
 
     @returns None
     """
@@ -27,7 +27,8 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS sessions (
               session_id TEXT PRIMARY KEY,
               created_at TEXT NOT NULL,
-              updated_at TEXT NOT NULL
+              updated_at TEXT NOT NULL,
+              user_id TEXT
             );
             CREATE TABLE IF NOT EXISTS messages (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,34 +41,43 @@ def init_db() -> None:
             );
             """
         )
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(sessions)").fetchall()]
+        if "user_id" not in cols:
+            conn.execute("ALTER TABLE sessions ADD COLUMN user_id TEXT")
 
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def ensure_session(session_id: str | None) -> str:
-    """没有 session_id 则新建，有则刷新 updated_at。
+def ensure_session(session_id: str | None, user_id: str) -> str:
+    """没有 session_id 则新建并绑定 user_id；已有则校验归属。
 
     @param session_id: 客户端带来的会话 id（str | None）
+    @param user_id: 登录用户 id（str）
     @returns str 实际使用的 session_id
+    @raises PermissionError 会话不属于该用户
     """
     init_db()
     sid = (session_id or "").strip() or str(uuid.uuid4())
     now = _now()
     with _connect() as conn:
         row = conn.execute(
-            "SELECT session_id FROM sessions WHERE session_id = ?", (sid,)
+            "SELECT session_id, user_id FROM sessions WHERE session_id = ?",
+            (sid,),
         ).fetchone()
         if row:
+            owner = row["user_id"]
+            if owner and owner != user_id:
+                raise PermissionError("session not owned")
             conn.execute(
-                "UPDATE sessions SET updated_at = ? WHERE session_id = ?",
-                (now, sid),
+                "UPDATE sessions SET updated_at = ?, user_id = COALESCE(user_id, ?) WHERE session_id = ?",
+                (now, user_id, sid),
             )
         else:
             conn.execute(
-                "INSERT INTO sessions (session_id, created_at, updated_at) VALUES (?,?,?)",
-                (sid, now, now),
+                "INSERT INTO sessions (session_id, created_at, updated_at, user_id) VALUES (?,?,?,?)",
+                (sid, now, now, user_id),
             )
     return sid
 
@@ -108,9 +118,27 @@ def list_history(session_id: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def list_sessions(limit: int = 40) -> list[dict]:
-    """会话列表：条数与最后一条预览供侧边栏展示。
+def session_owner(session_id: str) -> str | None:
+    """会话所属用户。
 
+    @param session_id: 会话 id（str）
+    @returns str | None
+    """
+    init_db()
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT user_id FROM sessions WHERE session_id = ?",
+            (session_id,),
+        ).fetchone()
+    if not row:
+        return None
+    return row["user_id"]
+
+
+def list_sessions(user_id: str, limit: int = 40) -> list[dict]:
+    """该用户的会话列表。
+
+    @param user_id: 用户 id（str）
     @param limit: 最多返回条数（int）
     @returns list[dict] session_id/updated_at/msg_count/preview
     """
@@ -122,9 +150,10 @@ def list_sessions(limit: int = 40) -> list[dict]:
                    (SELECT COUNT(*) FROM messages m WHERE m.session_id = s.session_id) AS msg_count,
                    (SELECT content FROM messages m WHERE m.session_id = s.session_id ORDER BY id DESC LIMIT 1) AS preview
             FROM sessions s
+            WHERE s.user_id = ?
             ORDER BY s.updated_at DESC
             LIMIT ?
             """,
-            (limit,),
+            (user_id, limit),
         ).fetchall()
     return [dict(r) for r in rows]

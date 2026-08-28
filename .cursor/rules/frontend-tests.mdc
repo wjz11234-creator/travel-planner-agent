@@ -7,5 +7,6 @@ alwaysApply: false
 # 本仓库测试
 
 - 单测：`web/src/**/*.test.ts(x)`。e2e：`web/e2e/*.spec.ts`。
-- e2e mock：`/api/sessions`、`/api/chat/history`、`/api/chat/stream`。
+- e2e mock：`/api/auth/me`、`/api/sessions`、`/api/chat/history`、`/api/chat/stream`。
+- 页面：默认 `/login`；工作台在 `/`。先 mock 已登录或点「跳过登录」再跑 P0 对话用例。
 - 覆盖：空态三示例、Guide 流式、Planner 占位、新对话。命令见 `AGENTS.md`。

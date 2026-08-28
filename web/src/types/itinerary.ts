@@ -49,3 +49,15 @@ export type SessionSummary = {
   msg_count: number;
   preview: string | null;
 };
+
+export type User = {
+  id: string;
+  email: string;
+  nickname: string;
+};
+
+export type ChatStreamBody = {
+  message: string;
+  session_id: string | null;
+  history?: ChatMessage[];
+};

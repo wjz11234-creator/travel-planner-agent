@@ -5,8 +5,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
 from app.db.session_store import init_db
+from app.db.user_store import init_users
 
 
 @asynccontextmanager
@@ -17,6 +19,7 @@ async def lifespan(_app: FastAPI):
     @returns AsyncIterator[None]
     """
     init_db()
+    init_users()
     yield
 
 
@@ -32,4 +35,5 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(auth_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")

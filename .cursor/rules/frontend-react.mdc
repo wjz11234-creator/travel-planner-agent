@@ -8,6 +8,7 @@ alwaysApply: false
 
 - 样式用同名 `*.module.css`。可断言节点用稳定 `data-testid`。
 - 同一 `agent` 的 SSE text 写回最后一条气泡，不要每个 token 新建。
-- 会话 id：`travel-planner-session-id`；「新对话」清 session 与消息。
+- 会话 id：仅登录用户使用；游客不写 localStorage，「新建会话」清当前消息。
 - 徽章文案只用 `web/src/lib/agents.ts` 的 `agentLabel`。
-- 业务 fetch 只走 `web/src/api/chat.ts`。
+- 对话 fetch 走 `web/src/api/chat.ts`；鉴权走 `web/src/api/auth.ts`。均 `credentials: "include"`。
+- 路由：`/login` `/register` `/forgot` 鉴权，`/` 工作台。不要把登录和工作台做在同一页里用 state 切换。

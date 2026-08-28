@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     host: str = "0.0.0.0"
     port: int = 8000
+    auth_secret: str = "dev-only-change-me"
 
     @property
     def knowledge_dir(self) -> Path:

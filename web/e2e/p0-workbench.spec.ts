@@ -10,7 +10,22 @@ async function mockApi(
   page: Page,
   streamBody: string,
   history: Array<{ role: string; content: string; agent?: string }> = [],
+  user: { id: string; email: string; nickname: string } | null = null,
 ) {
+  await page.route("**/api/auth/me", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ user }),
+    });
+  });
+  await page.route("**/api/auth/logout", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true }),
+    });
+  });
   await page.route("**/api/sessions", async (route) => {
     await route.fulfill({
       status: 200,
@@ -37,13 +52,30 @@ async function mockApi(
   });
 }
 
+async function enterGuest(page: Page) {
+  await page.goto("/login");
+  await page.getByTestId("skip-login").click();
+  await expect(page.getByTestId("workbench")).toBeVisible();
+}
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.clear());
   await mockApi(page, "");
 });
 
-test("empty state shows three P0 examples", async ({ page }) => {
+test("logged-out users land on login", async ({ page }) => {
   await page.goto("/");
+  await expect(page.getByTestId("login-view")).toBeVisible();
+});
+
+test("skip login opens a guest workbench", async ({ page }) => {
+  await enterGuest(page);
+  await expect(page.getByTestId("guest-badge")).toHaveText("游客");
+  await expect(page.getByTestId("guest-banner")).toBeVisible();
+});
+
+test("empty state shows three P0 examples", async ({ page }) => {
+  await enterGuest(page);
   await expect(page.getByTestId("empty-state")).toBeVisible();
   await expect(page.getByTestId("example-kyoto")).toBeVisible();
   await expect(page.getByTestId("example-tokyo-tower")).toBeVisible();
@@ -79,7 +111,7 @@ test("kyoto example streams a Guide bubble", async ({ page }) => {
       { role: "agent", content: "四月建议带薄外套。", agent: "guide" },
     ],
   );
-  await page.goto("/");
+  await enterGuest(page);
   await page.getByTestId("example-kyoto").click();
   await expect(page.getByTestId("composer-input")).toHaveValue("京都四月穿什么");
   await page.getByTestId("send-button").click();
@@ -118,7 +150,7 @@ test("tokyo 5-day example shows Planner placeholder", async ({ page }) => {
       { role: "agent", content: "完整流水线将在 P1 上线。", agent: "planner" },
     ],
   );
-  await page.goto("/");
+  await enterGuest(page);
   await page.getByTestId("example-tokyo-5d").click();
   await page.getByTestId("send-button").click();
   await expect(page.getByTestId("agent-badge-planner")).toHaveText("Planner");
@@ -142,11 +174,25 @@ test("new chat clears the thread", async ({ page }) => {
       { role: "agent", content: "先回一条。", agent: "guide" },
     ],
   );
-  await page.goto("/");
+  await enterGuest(page);
   await page.getByTestId("example-tokyo-tower").click();
   await page.getByTestId("send-button").click();
   await expect(page.getByTestId("agent-badge-guide")).toBeVisible();
   await page.getByTestId("new-chat").click();
   await expect(page.getByTestId("empty-state")).toBeVisible();
   await expect(page.getByTestId("intent-pill")).toContainText("—");
+});
+
+test("logout returns to the login page", async ({ page }) => {
+  await mockApi(page, "", [], {
+    id: "u1",
+    email: "xiaoming@traveler.com",
+    nickname: "小明",
+  });
+  await page.goto("/");
+  await expect(page.getByTestId("workbench")).toBeVisible();
+  await expect(page.getByTestId("user-nickname")).toHaveText("小明");
+  await page.getByTestId("settings-trigger").click();
+  await page.getByTestId("logout-button").click();
+  await expect(page.getByTestId("login-view")).toBeVisible();
 });
